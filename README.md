@@ -23,7 +23,7 @@ A tool to transcribe videos and generate titles and descriptions based on the tr
 
 ```bash
 # Clone the repository
-git clone https://github.com/yourusername/shorts-whisperer.git
+git clone https://github.com/vpetersson/shorts-whisperer.git
 cd shorts-whisperer
 
 # Install with Poetry
