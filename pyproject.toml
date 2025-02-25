@@ -1,0 +1,51 @@
+[project]
+name = "shorts-whisperer"
+version = "0.1.0"
+description = "A tool to transcribe videos and generate titles and descriptions"
+authors = [
+    {name = "Viktor Petersson",email = "self@vpetersson.com"}
+]
+readme = "README.md"
+requires-python = ">=3.9,<3.13"
+dependencies = [
+    "click (>=8.1.8,<9.0.0)",
+    "pytest (>=8.3.4,<9.0.0)",
+    "pytest-cov (>=6.0.0,<7.0.0)",
+    "ollama (>=0.4.7,<0.5.0)",
+    "openai-whisper (>=20231117,<30000000)",
+    "moviepy (>=2.1.2,<3.0.0)",
+    "numpy (>=1.25.0,<2.0.0)"
+]
+
+[tool.poetry]
+name = "shorts-whisperer"
+version = "0.1.0"
+description = "A tool to transcribe videos and generate titles and descriptions"
+authors = ["Viktor Petersson <self@vpetersson.com>"]
+packages = [{include = "shorts_whisperer", from = "src"}]
+
+[tool.poetry.dependencies]
+python = ">=3.9,<3.13"
+click = ">=8.1.8,<9.0.0"
+ollama = ">=0.4.7,<0.5.0"
+openai-whisper = ">=20231117,<30000000"
+moviepy = ">=2.1.2,<3.0.0"
+numpy = ">=1.25.0,<2.0.0"
+
+[tool.poetry.group.dev.dependencies]
+pytest = ">=8.3.4,<9.0.0"
+pytest-cov = ">=6.0.0,<7.0.0"
+
+[tool.poetry.scripts]
+shorts-whisperer = "shorts_whisperer.cli:main"
+
+[build-system]
+requires = ["poetry-core>=2.0.0,<3.0.0"]
+build-backend = "poetry.core.masonry.api"
+
+[tool.pytest.ini_options]
+testpaths = ["tests"]
+python_files = "test_*.py"
+python_functions = "test_*"
+python_classes = "Test*"
+addopts = "--cov=shorts_whisperer --cov-report=term-missing"
