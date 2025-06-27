@@ -5,10 +5,12 @@ A tool to transcribe videos and generate titles and descriptions based on the tr
 ## Features
 
 - Transcribe video files using Whisper
-- Generate catchy titles and detailed descriptions using Ollama
+- Generate accurate titles and descriptions using Ollama (Llama 3.2)
 - Save full transcripts for reference
 - Support for custom prompt templates
 - Flexible transcript format handling
+- Quality assessment and validation of generated content
+- Robust error handling with clear exit messages
 - Simple command-line interface
 
 ## Installation
@@ -46,13 +48,16 @@ shorts-whisperer --input /path/to/video.mp4 --full-transcript /path/to/transcrip
 shorts-whisperer --input /path/to/video.mp4 --output /path/to/output.txt
 
 # Use a different Ollama model
-shorts-whisperer --input /path/to/video.mp4 --model llama3:8b
+shorts-whisperer --input /path/to/video.mp4 --model llama3.2:8b
 
 # Use a custom prompt template
 shorts-whisperer --input /path/to/video.mp4 --prompt-template /path/to/prompt.txt
 
 # Load an existing transcript instead of generating a new one
 shorts-whisperer --input /path/to/video.mp4 --load-transcript /path/to/transcript.json
+
+# Show quality assessment for generated content
+shorts-whisperer --input /path/to/video.mp4 --show-quality --verbose
 ```
 
 ### Options
@@ -60,10 +65,12 @@ shorts-whisperer --input /path/to/video.mp4 --load-transcript /path/to/transcrip
 - `--input`, `-i`: Path to the input video file (required)
 - `--full-transcript`, `-f`: Path to save the full transcript JSON
 - `--output`, `-o`: Path to save the generated title and description
-- `--model`, `-m`: Ollama model to use for generating title and description (default: llama3)
+- `--model`, `-m`: Ollama model to use for generating title and description (default: llama3.2:latest)
 - `--prompt-template`, `-p`: Path to a custom prompt template file
 - `--transcript-format`, `-t`: Format for saving/loading the transcript (json, txt, srt, vtt)
 - `--load-transcript`, `-l`: Path to load an existing transcript instead of generating a new one
+- `--verbose`, `-v`: Enable verbose output
+- `--show-quality`, `-q`: Show quality assessment and improvement suggestions
 
 ### Custom Prompt Templates
 

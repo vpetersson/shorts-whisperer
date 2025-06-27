@@ -3,7 +3,6 @@ Tests for the generator module
 """
 
 from unittest import mock
-
 import pytest
 
 # Mock the imports that are causing issues
@@ -13,8 +12,9 @@ from shorts_whisperer.transcriber import Segment, Transcript
 from shorts_whisperer.generator import generate_title_description
 
 
+@mock.patch("shorts_whisperer.generator.check_ollama_availability", return_value=True)
 @mock.patch("shorts_whisperer.generator.ollama")
-def test_generate_title_description_success(mock_ollama):
+def test_generate_title_description_success(mock_ollama, mock_check):
     # Create a test transcript
     segments = [
         Segment(start=0.0, end=1.0, text="Hello"),
@@ -33,13 +33,15 @@ def test_generate_title_description_success(mock_ollama):
     title, description = generate_title_description(transcript, model="test-model")
 
     # Verify
+    assert mock_check.called
     assert mock_ollama.chat.called
     assert title == "Hello World"
     assert description == "A simple greeting to the world."
 
 
+@mock.patch("shorts_whisperer.generator.check_ollama_availability", return_value=True)
 @mock.patch("shorts_whisperer.generator.ollama")
-def test_generate_title_description_alternative_format(mock_ollama):
+def test_generate_title_description_alternative_format(mock_ollama, mock_check):
     # Create a test transcript
     segments = [
         Segment(start=0.0, end=1.0, text="Hello"),
@@ -58,13 +60,33 @@ def test_generate_title_description_alternative_format(mock_ollama):
     title, description = generate_title_description(transcript, model="test-model")
 
     # Verify
+    assert mock_check.called
     assert mock_ollama.chat.called
     assert title == "Hello World"
     assert description == "A simple greeting to the world."
 
 
+@mock.patch("shorts_whisperer.generator.check_ollama_availability", return_value=False)
+def test_generate_title_description_ollama_unavailable(mock_check):
+    # Create a test transcript
+    segments = [
+        Segment(start=0.0, end=1.0, text="Hello"),
+        Segment(start=1.0, end=2.0, text="world")
+    ]
+    transcript = Transcript(segments=segments, language="en")
+
+    # Call the function and expect SystemExit
+    with pytest.raises(SystemExit) as exc_info:
+        generate_title_description(transcript, model="test-model")
+
+    # Verify exit code
+    assert exc_info.value.code == 1
+    assert mock_check.called
+
+
+@mock.patch("shorts_whisperer.generator.check_ollama_availability", return_value=True)
 @mock.patch("shorts_whisperer.generator.ollama")
-def test_generate_title_description_error(mock_ollama):
+def test_generate_title_description_error(mock_ollama, mock_check):
     # Create a test transcript
     segments = [
         Segment(start=0.0, end=1.0, text="Hello"),
@@ -75,17 +97,18 @@ def test_generate_title_description_error(mock_ollama):
     # Mock the Ollama response to raise an exception
     mock_ollama.chat.side_effect = Exception("API error")
 
-    # Call the function
-    title, description = generate_title_description(transcript, model="test-model")
+    # Call the function and expect SystemExit
+    with pytest.raises(SystemExit) as exc_info:
+        generate_title_description(transcript, model="test-model")
 
-    # Verify we get a fallback response
-    assert title == "Video Transcript"
-    assert description.startswith("This video contains the following content:")
-    assert "Hello world" in description
+    # Verify exit code and that availability check passed
+    assert exc_info.value.code == 1
+    assert mock_check.called
 
 
+@mock.patch("shorts_whisperer.generator.check_ollama_availability", return_value=True)
 @mock.patch("shorts_whisperer.generator.ollama")
-def test_generate_title_description_with_full_transcript(mock_ollama):
+def test_generate_title_description_with_full_transcript(mock_ollama, mock_check):
     # Create a test clip transcript
     clip_segments = [
         Segment(start=0.0, end=1.0, text="Hello"),
@@ -121,6 +144,7 @@ def test_generate_title_description_with_full_transcript(mock_ollama):
     )
 
     # Verify
+    assert mock_check.called
     assert mock_ollama.chat.called
     assert title == "Hello World"
     assert description == "A simple greeting to the world with context from the full episode."

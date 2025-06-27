@@ -14,9 +14,69 @@ from shorts_whisperer.transcriber import Transcript
 logger = logging.getLogger('shorts-whisperer')
 
 
+def check_ollama_availability(model: str) -> bool:
+    """
+    Check if Ollama is running and the specified model is available.
+
+    Args:
+        model: The model name to check
+
+    Returns:
+        True if Ollama is available and model exists, False otherwise
+    """
+    try:
+        # Try to list models to see if Ollama is running
+        models = ollama.list()
+
+        # Check if the specific model is available
+        model_names = [m['name'] for m in models.get('models', [])]
+
+        # Handle both exact matches and base model names
+        model_base = model.split(':')[0]  # Remove tag if present
+        available = any(model in name or model_base in name for name in model_names)
+
+        if not available:
+            logger.error(f"Model '{model}' not found. Available models: {', '.join(model_names)}")
+            return False
+
+        logger.info(f"Ollama is running and model '{model}' is available")
+        return True
+
+    except ConnectionError:
+        logger.error("Ollama is not running. Please start Ollama first.")
+        return False
+    except Exception as e:
+        logger.error(f"Failed to connect to Ollama: {str(e)}")
+        return False
+
+
+def validate_output_format(title: str, description: str) -> Tuple[str, str, list]:
+    """
+    Basic validation to ensure output meets minimum quality standards.
+    Returns: (cleaned_title, cleaned_description, issues_found)
+    """
+    issues = []
+
+    # Clean up title
+    title = title.strip()
+    if len(title) > 100:
+        issues.append(f"Title too long ({len(title)} chars) - YouTube recommends <100")
+    if len(title) < 20:
+        issues.append(f"Title too short ({len(title)} chars) - may not be descriptive enough")
+
+    # Clean up description
+    description = description.strip()
+    if len(description) < 50:
+        issues.append(f"Description too short ({len(description)} chars) - needs more context")
+    if len(description) > 1000:
+        issues.append(f"Description too long ({len(description)} chars) - may be cut off")
+
+    return title, description, issues
+
+
 def generate_title_description(
     transcript: Transcript,
-    model: str = "llama3.1:latest",
+    model: str = "llama3.2:latest",
     custom_prompt: Optional[str] = None,
     filename: Optional[str] = None,
     full_transcript: Optional[Transcript] = None
@@ -38,66 +98,61 @@ def generate_title_description(
     if filename:
         logger.info(f"Processing file: {filename}")
 
+    # Check if Ollama is available before proceeding
+    if not check_ollama_availability(model):
+        logger.error("Cannot proceed without Ollama. Exiting.")
+        sys.exit(1)
+
+    # Calculate transcript metrics for better context
+    word_count = len(transcript.full_text.split())
+    duration = max(segment.end for segment in transcript.segments) if transcript.segments else 0
+
     # Prepare the prompt
     if custom_prompt:
         # Use the custom prompt, replacing {transcript} with the actual transcript
         prompt = custom_prompt.replace("{transcript}", transcript.full_text)
     else:
-        # Use the default prompt
+        # Use the enhanced default prompt
         if full_transcript and full_transcript != transcript:
             # If we have both transcripts and they're different, use both
             prompt = f"""
-            You are a technical content creator specializing in software development, IT infrastructure, and emerging technologies. Create an informative title and description for a YouTube Short based on this transcript from "Nerding Out with Viktor".
+                                    Create a title and description for a video clip based on this transcript.
 
-            I'll provide you with two transcripts:
-            1. The FULL EPISODE transcript for context
-            2. The SHORT CLIP transcript (which is what we're creating a title and description for)
-
-            FULL EPISODE TRANSCRIPT (for context only):
+            FULL EPISODE TRANSCRIPT (for context):
             {full_transcript.full_text}
 
-            SHORT CLIP TRANSCRIPT (focus on this for the title and description):
+            SHORT CLIP TRANSCRIPT (main content):
             {transcript.full_text}
 
             REQUIREMENTS:
-            1. Title: Create a technically accurate title under 100 characters that clearly communicates the technical topic
-            2. Description: Write a technically focused description (2-3 sentences) that:
-               - Summarizes the key technical information or insight
-               - Explains why this is relevant to developers, engineers, or IT professionals
-               - Mentions specific technologies, standards, or methodologies where appropriate
-            3. Both should use proper technical terminology and avoid oversimplification
-            4. Focus on the technical aspects from the SHORT CLIP transcript
-            5. Assume an audience with technical knowledge and interest in the subject
-            6. Do not include any notes or explanations about your process
+            - Title: Summarize the main topic discussed in the clip (under 100 characters)
+            - Description: Explain what is discussed in the clip (2-3 sentences)
+            - Use only information that is actually mentioned in the transcript
+            - Be accurate and direct
 
-            FORMAT YOUR RESPONSE IN MARKDOWN LIKE THIS:
+            FORMAT:
             # Title
 
-            Description text here
+            Description
             """
         else:
-            # If we only have one transcript, use it
+                        # If we only have one transcript, use it
             prompt = f"""
-            You are a technical content creator specializing in software development, IT infrastructure, and emerging technologies. Create an informative title and description for a YouTube Short based on this transcript from "Nerding Out with Viktor".
+            Create a title and description for a video clip based on this transcript.
 
             TRANSCRIPT:
             {transcript.full_text}
 
             REQUIREMENTS:
-            1. Title: Create a technically accurate title under 100 characters that clearly communicates the technical topic
-            2. Description: Write a technically focused description (2-3 sentences) that:
-               - Summarizes the key technical information or insight
-               - Explains why this is relevant to developers, engineers, or IT professionals
-               - Mentions specific technologies, standards, or methodologies where appropriate
-            3. Both should use proper technical terminology and avoid oversimplification
-            4. Focus on the technical aspects from the transcript
-            5. Assume an audience with technical knowledge and interest in the subject
-            6. Do not include any notes or explanations about your process
+            - Title: Summarize the main topic discussed in the clip (under 100 characters)
+            - Description: Explain what is discussed in the clip (2-3 sentences)
+            - Use only information that is actually mentioned in the transcript
+            - Be accurate and direct
 
-            FORMAT YOUR RESPONSE IN MARKDOWN LIKE THIS:
+            FORMAT:
             # Title
 
-            Description text here
+            Description
             """
 
     # Call Ollama
@@ -169,7 +224,15 @@ def generate_title_description(
                     title = content.strip()
                     description = "No description generated."
 
-        # Only keep these final print statements for minimal output
+        # Basic validation
+        title, description, issues = validate_output_format(title, description)
+
+        if issues:
+            logger.warning("Output issues found:")
+            for issue in issues:
+                logger.warning(f"  - {issue}")
+
+        # Final output
         logger.info(f"Final title: {title}")
         logger.info(f"Final description: {description[:100]}{'...' if len(description) > 100 else ''}")
 
@@ -177,11 +240,8 @@ def generate_title_description(
 
     except Exception as e:
         logger.error(f"Error calling Ollama: {str(e)}")
-        # Fallback in case of error
-        return (
-            f"Video Transcript",
-            f"This video contains the following content: {transcript.full_text[:200]}..."
-        )
+        logger.error("Failed to generate title and description. Exiting.")
+        sys.exit(1)
 
 def clean_description(description: str) -> str:
     """Clean up the description by removing notes and explanations."""

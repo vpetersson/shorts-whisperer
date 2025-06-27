@@ -43,7 +43,7 @@ logger = logging.getLogger('shorts-whisperer')
 @click.option(
     "--model",
     "-m",
-    default="llama3.1:latest",
+    default="llama3.2:latest",
     help="Ollama model to use for generating title and description",
 )
 @click.option(
@@ -78,7 +78,13 @@ logger = logging.getLogger('shorts-whisperer')
     is_flag=True,
     help="Enable verbose output",
 )
-def main(input, full_transcript, output, model, prompt_template, transcript_format, load_transcript, whisper_model, verbose):
+@click.option(
+    "--show-quality",
+    "-q",
+    is_flag=True,
+    help="Show quality assessment and improvement suggestions",
+)
+def main(input, full_transcript, output, model, prompt_template, transcript_format, load_transcript, whisper_model, verbose, show_quality):
     """
     Transcribe a video and generate a title and description based on the transcription.
     """
