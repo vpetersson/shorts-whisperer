@@ -29,7 +29,13 @@ def check_ollama_availability(model: str) -> bool:
         models = ollama.list()
 
         # Check if the specific model is available
-        model_names = [m['name'] for m in models.get('models', [])]
+        # Handle both old dict format and new object format
+        if hasattr(models, 'models'):
+            # New format: models is an object with .models attribute
+            model_names = [m.model for m in models.models]
+        else:
+            # Old format: models is a dict with 'models' key
+            model_names = [m['name'] for m in models.get('models', [])]
 
         # Handle both exact matches and base model names
         model_base = model.split(':')[0]  # Remove tag if present
